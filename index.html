@@ -621,11 +621,19 @@ const authMsg=e=>{const c=e&&e.code||'';
 function showLogin(on){$('login').hidden=!on;document.querySelector('.wrap').hidden=on;}
 let auth=null,fs=null;
 try{
-  if(typeof FIREBASE_CONFIG==='undefined'||!FIREBASE_CONFIG.apiKey||/여기/.test(FIREBASE_CONFIG.apiKey))throw new Error('config');
+  if(typeof firebase==='undefined')throw new Error('LIB');
+  if(typeof FIREBASE_CONFIG==='undefined')throw new Error('NOCONFIG');
+  if(!FIREBASE_CONFIG.apiKey||/여기/.test(FIREBASE_CONFIG.apiKey))throw new Error('EMPTY');
   firebase.initializeApp(FIREBASE_CONFIG);auth=firebase.auth();fs=firebase.firestore();
   fs.enablePersistence({synchronizeTabs:true}).catch(()=>{});
 }catch(e){
-  showLogin(true);$('l-msg').textContent='firebase-config.js 에 Firebase 설정값을 넣어 주세요.';
+  auth=null;showLogin(true);
+  const m=e&&e.message||String(e);
+  $('l-msg').textContent=
+    m==='LIB'?'Firebase 라이브러리를 불러오지 못했어요. 광고/콘텐츠 차단 기능을 끄거나 다른 네트워크에서 새로 고침해 보세요.':
+    m==='NOCONFIG'?'firebase-config.js 를 읽지 못했어요. 파일 첫 줄이 const FIREBASE_CONFIG = { 인지, 파일 이름이 정확한지 확인해 주세요.':
+    m==='EMPTY'?'firebase-config.js 의 apiKey 가 비어 있거나 예시 그대로예요.':
+    '시작 오류: '+m;
 }
 if(auth){
   $('b-login').addEventListener('click',async()=>{$('l-msg').textContent='';try{await auth.signInWithEmailAndPassword($('l-email').value.trim(),$('l-pw').value);}catch(e){$('l-msg').textContent=authMsg(e);}});
