@@ -380,7 +380,7 @@ async function autoFill(){
       if(typeof v==='string'&&v.trim()&&!el.value.trim()){el.value=v.trim();n++;}}
     $('fill-msg').textContent=n?`${n}칸을 채웠어요. 비어 있던 칸만 채우니 틀린 곳은 직접 고쳐 주세요.`:'채울 빈 칸이 없어요.';
   }catch(e){
-    $('fill-msg').textContent=e&&e.code==='not_granted'?'허용하지 않아 직접 입력으로 진행합니다.':e&&e.code==='rate_limited'?'잠시 후 다시 시도해 주세요.':'자동 채우기에 실패했어요. 직접 입력해 주세요.'+(e&&e.message?' ('+String(e.message).slice(0,90)+')':'');
+    $('fill-msg').textContent=e&&e.code==='not_granted'?'허용하지 않아 직접 입력으로 진행합니다.':e&&e.code==='rate_limited'?'잠시 후 다시 시도해 주세요.':'자동 채우기에 실패했어요. 직접 입력해 주세요.'+(e&&e.message?' ('+String(e.message).slice(0,400)+')':'');
   }
   b.disabled=false;
 }
