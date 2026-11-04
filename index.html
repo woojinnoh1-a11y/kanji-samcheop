@@ -174,6 +174,7 @@ body{margin:0}[hidden]{display:none!important}
       </div>
       <label>자동 채우기용 Anthropic API 키 (선택 · 이 기기의 브라우저에만 저장됩니다)
         <input type="password" id="in-key" autocomplete="off" placeholder="sk-ant-..." style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:100%"></label>
+      <div class="sub" id="ver" style="line-height:1.7"></div>
       <div class="row"><button class="btn ghost sm" id="b-key">키 저장</button><button class="btn ghost sm" id="b-keyx">키 삭제</button></div>
     </div>
   </section>
@@ -611,6 +612,8 @@ $('in-file').addEventListener('change',async e=>{
 });
 
 // Gemini via Firebase AI Logic (no API key in the browser)
+const VER='v6';
+function setVer(t){const e=document.getElementById('ver');if(e)e.textContent=VER+' · 모델 '+((typeof FIREBASE_CONFIG!=='undefined'&&FIREBASE_CONFIG.aiModel)||'gemini-3.8-flash')+' · '+t;}
 async function initAI(){
   const base='https://www.gstatic.com/firebasejs/11.10.0/';
   const [{initializeApp},{getAI,getGenerativeModel,GoogleAIBackend}]=await Promise.all([import(base+'firebase-app.js'),import(base+'firebase-ai.js')]);
@@ -620,7 +623,10 @@ async function initAI(){
     const m=await import(base+'firebase-app-check.js');
     ac=m.initializeAppCheck(app,{provider:new m.ReCaptchaV3Provider(FIREBASE_CONFIG.appCheckSiteKey),isTokenAutoRefreshEnabled:true});
     acGet=m.getToken;
-  }
+    setVer('App Check: 사이트 키 있음 · 토큰 확인 중…');
+    acGet(ac,false).then(()=>setVer('App Check: 사이트 키 있음 · 토큰 발급 성공'))
+      .catch(t=>setVer('App Check: 사이트 키 있음 · 토큰 발급 실패 ('+(t&&(t.code||t.message)||'?')+')'));
+  }else{setVer('App Check: 꺼짐 (firebase-config.js 에 appCheckSiteKey 가 없음)');}
   const ai=getAI(app,{backend:new GoogleAIBackend()});
   const model=getGenerativeModel(ai,{model:FIREBASE_CONFIG.aiModel||'gemini-3.8-flash',generationConfig:{responseMimeType:'application/json'}});
   return {json:async prompt=>{
