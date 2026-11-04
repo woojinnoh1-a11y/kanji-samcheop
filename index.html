@@ -612,7 +612,7 @@ $('in-file').addEventListener('change',async e=>{
 });
 
 // Gemini via Firebase AI Logic (no API key in the browser)
-const VER='v7';
+const VER='v8';
 function setVer(t){const e=document.getElementById('ver');if(e)e.textContent=VER+' · 모델 '+((typeof FIREBASE_CONFIG!=='undefined'&&FIREBASE_CONFIG.aiModel)||'gemini-3.8-flash')+' · '+t;}
 async function initAI(){
   const base='https://www.gstatic.com/firebasejs/11.10.0/';
@@ -621,7 +621,7 @@ async function initAI(){
   let ac=null,acGet=null;
   if(FIREBASE_CONFIG.appCheckSiteKey){
     const m=await import(base+'firebase-app-check.js');
-    ac=m.initializeAppCheck(app,{provider:new m.ReCaptchaV3Provider(FIREBASE_CONFIG.appCheckSiteKey),isTokenAutoRefreshEnabled:true});
+    ac=m.initializeAppCheck(app,{provider:(FIREBASE_CONFIG.appCheckType==='v3'?new m.ReCaptchaV3Provider(FIREBASE_CONFIG.appCheckSiteKey):new m.ReCaptchaEnterpriseProvider(FIREBASE_CONFIG.appCheckSiteKey)),isTokenAutoRefreshEnabled:true});
     acGet=m.getToken;
     setVer('App Check: 사이트 키 있음 · 토큰 확인 중…');
     acGet(ac,false).then(()=>setVer('App Check: 사이트 키 있음 · 토큰 발급 성공'))
