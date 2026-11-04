@@ -232,7 +232,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="firebase-config.js"></script>
+<script>document.write('<script src="firebase-config.js?t='+Date.now()+'"><\/script>');</script>
 <script>
 (async function(){
 const $=id=>document.getElementById(id);
@@ -612,7 +612,7 @@ $('in-file').addEventListener('change',async e=>{
 });
 
 // Gemini via Firebase AI Logic (no API key in the browser)
-const VER='v9';
+const VER='v10';
 function setVer(t){const e=document.getElementById('ver');if(e)e.textContent=VER+' · 모델 '+((typeof FIREBASE_CONFIG!=='undefined'&&FIREBASE_CONFIG.aiModel)||'gemini-3.8-flash')+' · '+t;}
 async function initAI(){
   const base='https://www.gstatic.com/firebasejs/11.10.0/';
