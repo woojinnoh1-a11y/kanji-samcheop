@@ -615,14 +615,22 @@ async function initAI(){
   const base='https://www.gstatic.com/firebasejs/11.10.0/';
   const [{initializeApp},{getAI,getGenerativeModel,GoogleAIBackend}]=await Promise.all([import(base+'firebase-app.js'),import(base+'firebase-ai.js')]);
   const app=initializeApp(FIREBASE_CONFIG,'ai');
+  let ac=null,acGet=null;
   if(FIREBASE_CONFIG.appCheckSiteKey){
-    const {initializeAppCheck,ReCaptchaV3Provider}=await import(base+'firebase-app-check.js');
-    initializeAppCheck(app,{provider:new ReCaptchaV3Provider(FIREBASE_CONFIG.appCheckSiteKey),isTokenAutoRefreshEnabled:true});
+    const m=await import(base+'firebase-app-check.js');
+    ac=m.initializeAppCheck(app,{provider:new m.ReCaptchaV3Provider(FIREBASE_CONFIG.appCheckSiteKey),isTokenAutoRefreshEnabled:true});
+    acGet=m.getToken;
   }
   const ai=getAI(app,{backend:new GoogleAIBackend()});
   const model=getGenerativeModel(ai,{model:FIREBASE_CONFIG.aiModel||'gemini-3.8-flash',generationConfig:{responseMimeType:'application/json'}});
   return {json:async prompt=>{
-    const r=await model.generateContent(prompt);
+    let r;
+    try{r=await model.generateContent(prompt);}
+    catch(e){
+      if(ac){try{await acGet(ac,false);}catch(t){throw new Error('App Check 토큰을 받지 못했어요: '+(t.code||t.message));}}
+      else throw new Error('앱에 App Check 사이트 키(appCheckSiteKey)가 아직 적용되지 않았어요. '+(e&&e.message||''));
+      throw e;
+    }
     const t=r.response.text(),m=t.match(/\{[\s\S]*\}/);
     if(!m)throw {code:'invalid_json'};return JSON.parse(m[0]);}};
 }
