@@ -612,7 +612,7 @@ $('in-file').addEventListener('change',async e=>{
 });
 
 // Gemini via Firebase AI Logic (no API key in the browser)
-const VER='v8';
+const VER='v9';
 function setVer(t){const e=document.getElementById('ver');if(e)e.textContent=VER+' · 모델 '+((typeof FIREBASE_CONFIG!=='undefined'&&FIREBASE_CONFIG.aiModel)||'gemini-3.8-flash')+' · '+t;}
 async function initAI(){
   const base='https://www.gstatic.com/firebasejs/11.10.0/';
@@ -631,7 +631,7 @@ async function initAI(){
   const model=getGenerativeModel(ai,{model:FIREBASE_CONFIG.aiModel||'gemini-3.8-flash',generationConfig:{responseMimeType:'application/json'}});
   return {json:async prompt=>{
     let r;
-    try{r=await model.generateContent(prompt);}
+    try{r=await Promise.race([model.generateContent(prompt),new Promise((_,rej)=>setTimeout(()=>rej(new Error('40초 안에 응답이 없어요. 모델이 느리거나 연결이 막혔을 수 있어요.')),40000))]);}
     catch(e){
       if(ac){try{await acGet(ac,false);}catch(t){throw new Error('App Check 토큰을 받지 못했어요: '+(t.code||t.message));}}
       else throw new Error('앱에 App Check 사이트 키(appCheckSiteKey)가 아직 적용되지 않았어요. '+(e&&e.message||''));
