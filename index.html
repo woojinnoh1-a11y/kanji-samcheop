@@ -178,7 +178,7 @@ body{margin:0}[hidden]{display:none!important}
     </div>
     <div class="row" style="margin-top:16px">
       <input type="text" id="filter" placeholder="내 한자 검색" style="max-width:260px" autocomplete="off">
-      <span class="sub" id="count"></span>
+      <span class="sub" id="count"></span> <button class="btn ghost sm" id="b-bulk" hidden>빈 칸 자동 채우기</button><span class="sub" id="bulk-msg"></span>
     </div>
     <div id="mine-list"></div>
     <div class="card" style="margin-top:20px">
@@ -288,9 +288,9 @@ const curTab=()=>TABS.find(t=>!$('view-'+t).hidden);
 const FIELDS=[
  {c:'ja',k:'form',label:'자형 (신자체)',lang:'ja',auto:'일본 상용한자 자형(신자체)'},
  {c:'ja',k:'on',label:'음독 (カタカナ, 여러 개는 / 로)',lang:'ja',study:'음독'},
- {c:'ja',k:'words',label:'기본 음독 단어 (최대 4개)',kind:'pairs',max:4,lang:'ja',study:'기본 단어'},
- {c:'ja',k:'exc',label:'예외로 읽는 단어 (최대 4개)',kind:'pairs',max:4,lang:'ja',study:'예외'},
- {c:'ja',k:'kunWords',label:'훈독으로 읽는 단어 (최대 4개)',kind:'pairs',max:4,lang:'ja',study:'훈독 단어'},
+ {c:'ja',k:'words',label:'음독 단어 (음독으로 읽는 기본 단어, 최대 4개)',kind:'pairs',max:4,lang:'ja',study:'음독 단어'},
+ {c:'ja',k:'exc',label:'예외 읽기 단어 (예외로 읽는 단어, 최대 4개)',kind:'pairs',max:4,lang:'ja',study:'예외'},
+ {c:'ja',k:'kunWords',label:'기본 훈독 단어 (최대 4개)',kind:'pairs',max:4,lang:'ja',study:'기본 훈독 단어'},
  {c:'ko',k:'form',label:'자형 (정자)',lang:'ko',auto:'한국 자형(번체/정자)'},
  {c:'ko',k:'hun',label:'훈 (뜻), 여러 개는 / 로',study:'훈',auto:'한국 훈(뜻), 여러 개면 / 로 구분 (예: 배울)'},
  {c:'ko',k:'eum',label:'음',study:'음',auto:'한국 한자음 (예: 학)'},
@@ -425,13 +425,37 @@ async function autoFill(){
   b.disabled=false;
 }
 $('b-fill').addEventListener('click',autoFill);
+async function bulkFill(){
+  if(!(aiSample||getKey())){toast('AI를 쓸 수 없어요');return;}
+  const af=FIELDS.filter(f=>f.auto);
+  const todo=cards.filter(c=>af.some(f=>!String(get(c,f.c)[f.k]||'').trim()));
+  const m=$('bulk-msg'),b=$('b-bulk');
+  if(!todo.length){m.textContent=' 빈 칸이 있는 한자가 없어요.';return;}
+  b.disabled=true;let done=0,fail=0;
+  for(const c of todo){
+    m.textContent=` 채우는 중 ${done+fail+1}/${todo.length}…`;
+    const g=baseGlyph(c),shape={ja:{},ko:{},zh:{}};af.forEach(f=>shape[f.c][f.k]=f.auto);
+    try{
+      const r=await sample.json(`한자 "${g}" 한 글자에 대해 아래 JSON 형식의 각 값을 설명대로 채워 JSON 객체 하나로만 답하세요. 해당 나라에 대응하는 값이 없으면 빈 문자열을 쓰세요. 설명 없이 JSON만 출력하세요. 형식: ${JSON.stringify(shape)}`);
+      const patch={};
+      for(const f of af){const v=r&&r[f.c]&&r[f.c][f.k];
+        if(typeof v==='string'&&v.trim()&&!String(get(c,f.c)[f.k]||'').trim()){(patch[f.c]=patch[f.c]||{})[f.k]=v.trim();}}
+      if(Object.keys(patch).length)await col.doc(c.id).update(patch);
+      done++;
+    }catch(e){fail++;if(fail>=3)break;}
+  }
+  m.textContent=` 완료: ${done}자 채움${fail?', 실패 '+fail:''}`;
+  b.disabled=false;
+}
+$('b-bulk').addEventListener('click',bulkFill);
+
 function renderMine(){renderMineList();}
 function mineMain(c,sc){
   const ko=get(c,'ko'),ja=get(c,'ja'),zh=get(c,'zh');
   const kw=(ja.kunWords||[]).map(x=>x.w).join(' ')||(ja.kun?ja.kun+' (이전)':'');
   const hm=((ko.hun?ko.hun+' ':'')+(ko.eum||'')).trim();
   return `<div class="info">
-    <div class="mi-top"><span class="mi-g" lang="ko">${esc(ko.form||baseGlyph(c))}</span><span class="mi-hm">${esc(hm||c.gloss||'')}</span>${c.example?' <span class="tag ex">예시</span>':''}</div>
+    <div class="mi-top"><span class="mi-g" lang="ko">${esc(ko.form||baseGlyph(c))}</span><span class="mi-hm">${esc(hm||c.gloss||'')}${!ko.hun&&c.gloss&&ko.eum?' <small>('+esc(c.gloss)+')</small>':''}</span>${c.example?' <span class="tag ex">예시</span>':''}</div>
     ${c.gloss&&hm?`<div class="mi-sub">${esc(c.gloss)}</div>`:''}
     <div class="mi-line"><span class="tag ja">日</span> <span lang="ja">${esc(ja.form||'—')}</span>${ja.on?' 음독 <span lang="ja">'+esc(ja.on)+'</span>':''}${kw?' · 훈독 <span lang="ja">'+esc(kw)+'</span>':''}</div>
     <div class="mi-line"><span class="tag zh">中</span> <span lang="zh">${esc(zh.form||'—')}</span> ${esc(zh.py||'')}</div>
@@ -569,9 +593,9 @@ function submit(){
 function jpFields(c,cur){
   const ja=get(c,'ja'),f=[];
   if(ja.on)f.push({k:'on',label:'음독',exp:ja.on});
-  const w=(ja.words||[])[cur.wi];if(w&&w.r)f.push({k:'w',label:'기본 음독 단어',word:w.w,exp:w.r});
+  const w=(ja.words||[])[cur.wi];if(w&&w.r)f.push({k:'w',label:'음독 단어',word:w.w,exp:w.r});
+  const kk=(ja.kunWords||[])[cur.ki];if(kk&&kk.r)f.push({k:'kw',label:'기본 훈독 단어',word:kk.w,exp:kk.r});
   const x=(ja.exc||[])[cur.xi];if(x&&x.r)f.push({k:'x',label:'예외 읽기 단어',word:x.w,exp:x.r});
-  const kk=(ja.kunWords||[])[cur.ki];if(kk&&kk.r)f.push({k:'kw',label:'훈독으로 읽는 단어',word:kk.w,exp:kk.r});
   return f;
 }
 function renderJp(v,h,c,cur){
@@ -619,7 +643,7 @@ const KEY='kanji-api-key';
 const getKey=()=>{try{return localStorage.getItem(KEY)||'';}catch(e){return '';}};
 const setKey=v=>{try{if(v)localStorage.setItem(KEY,v);else localStorage.removeItem(KEY);}catch(e){}};
 let aiSample=null;
-function refreshFill(){$('b-fill').hidden=!(aiSample||getKey());}
+function refreshFill(){$('b-fill').hidden=!(aiSample||getKey());$('b-bulk').hidden=!(aiSample||getKey());}
 refreshFill();
 sample={json:async prompt=>{
   if(aiSample)return aiSample.json(prompt);
@@ -661,7 +685,7 @@ $('in-file').addEventListener('change',async e=>{
 });
 
 // Gemini via Firebase AI Logic (no API key in the browser)
-const VER='v13';
+const VER='v14';
 function setVer(t){const e=document.getElementById('ver');if(e)e.textContent=VER+' · 모델 '+((typeof FIREBASE_CONFIG!=='undefined'&&FIREBASE_CONFIG.aiModel)||'gemini-3.8-flash')+' · '+t;}
 async function initAI(){
   const base='https://www.gstatic.com/firebasejs/11.10.0/';
